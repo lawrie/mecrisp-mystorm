@@ -1,0 +1,541 @@
+
+Mecrisp-Ice 1.2
+
+  ok.
+\ Definitions in high-level Forth that can be compiled by the small  ok.
+\ nucleus itself. They are included into the bitstream for default.  ok.
+  ok.
+\ #######   CORE   ############################################  ok.
+  ok.
+: [']  ok.
+    ' postpone literal  ok.
+; immediate 0 foldable  ok.
+  ok.
+: [char]  ok.
+    char postpone literal  ok.
+; immediate 0 foldable  ok.
+  ok.
+: (  ok.
+    [char] ) parse 2drop  ok.
+; immediate 0 foldable  ok.
+  ok.
+: u>= ( u1 u2 -- ? ) u< invert ; 2 foldable  ok.
+: u<= ( u1 u2 -- ? ) u> invert ; 2 foldable  ok.
+: >=  ( n1 n2 -- ? )  < invert ; 2 foldable  ok.
+: <=  ( n1 n2 -- ? )  > invert ; 2 foldable  ok.
+  ok.
+: else  ok.
+    postpone ahead  ok.
+    swap  ok.
+    postpone then  ok.
+; immediate  ok.
+  ok.
+: while  ok.
+    postpone if  ok.
+    swap  ok.
+; immediate  ok.
+  ok.
+: repeat  ok.
+     postpone again  ok.
+     postpone then  ok.
+; immediate  ok.
+  ok.
+: create  ok.
+    :  ok.
+    here 4 + postpone literal  ok.
+    postpone ;  ok.
+;  ok.
+  ok.
+: >body  ok.
+    @ 32767 and  ok.
+;  ok.
+  ok.
+: m*  ok.
+    2dup xor >r  ok.
+    abs swap abs um*  ok.
+    r> 0< if dnegate then  ok.
+; 2 foldable  ok.
+  ok.
+: variable  ok.
+    create ,  ok.
+    0 foldable  ok.
+;  ok.
+  ok.
+: constant  : postpone literal postpone ; 0 foldable ;  ok.
+  ok.
+: sgn ( u1 n1 -- n2 ) \ n2 is u1 with the sign of n1  ok.
+    0< if negate then  ok.
+; 2 foldable  ok.
+  ok.
+\ Divide d1 by n1, giving the symmetric quotient n3 and the remainder  ok.
+\ n2.  ok.
+: sm/rem ( d1 n1 -- n2 n3 )  ok.
+    2dup xor >r     \ combined sign, for quotient  ok.
+    over >r         \ sign of dividend, for remainder  ok.
+    abs >r dabs r>  ok.
+    um/mod          ( remainder quotient )  ok.
+    swap r> sgn     \ apply to remainder  ok.
+    swap r> sgn     \ apply to quotient  ok.
+; 3 foldable  ok.
+  ok.
+\ Divide d1 by n1, giving the floored quotient n3 and the remainder n2.  ok.
+\ Adapted from hForth  ok.
+: fm/mod ( d1 n1 -- n2 n3 )  ok.
+    dup >r 2dup xor >r  ok.
+    >r dabs r@ abs  ok.
+    um/mod  ok.
+    r> 0< if  ok.
+        swap negate swap  ok.
+    then  ok.
+    r> 0< if  ok.
+        negate         \ negative quotient  ok.
+        over if  ok.
+            r@ rot - swap 1-  ok.
+        then  ok.
+    then  ok.
+    r> drop  ok.
+; 3 foldable  ok.
+  ok.
+: */mod     >r m* r> sm/rem ; 3 foldable  ok.
+: */        */mod nip ; 3 foldable  ok.
+  ok.
+: spaces  ok.
+    begin  ok.
+        dup 0>  ok.
+    while  ok.
+        space 1-  ok.
+    repeat  ok.
+    drop  ok.
+;  ok.
+  ok.
+( Pictured numeric output                    JCB 08:06 07/18/14)  ok.
+\ Adapted from hForth  ok.
+  ok.
+\ "The size of the pictured numeric output string buffer shall  ok.
+\ be at least (2*n) + 2 characters, where n is the number of  ok.
+\ bits in a cell."  ok.
+  ok.
+create BUF0  ok.
+16 cells 2 + 128 max  ok.
+allot here constant BUF  ok.
+  ok.
+0 variable hld  ok.
+  ok.
+: <#  ok.
+    BUF hld !  ok.
+;  ok.
+  ok.
+: hold  ok.
+    hld @ 1- dup hld ! c!  ok.
+;  ok.
+  ok.
+: sign  ok.
+    0< if  ok.
+        [char] - hold  ok.
+    then  ok.
+;  ok.
+  ok.
+: #  ok.
+    0 base @ um/mod >r base @ um/mod swap  ok.
+    9 over < [ char A char 9 1 + - ] literal and +  ok.
+    [ char 0 ] literal + hold r>  ok.
+;  ok.
+  ok.
+: #s  ok.
+    begin  ok.
+        #  ok.
+        2dup d0=  ok.
+    until  ok.
+;  ok.
+  ok.
+: #>  ok.
+    2drop hld @ BUF over -  ok.
+;  ok.
+  ok.
+: (d.)  ok.
+    dup >r dabs <# #s r> sign #>  ok.
+;  ok.
+  ok.
+: ud.  ok.
+    <# #s #> type space  ok.
+;  ok.
+  ok.
+: d.  ok.
+    (d.) type space  ok.
+;  ok.
+  ok.
+: .  ok.
+    s>d d.  ok.
+;  ok.
+  ok.
+: u.  ok.
+    0 d.  ok.
+;  ok.
+  ok.
+: rtype ( caddr u1 u2 -- ) \ display character string specified by caddr u1  ok.
+
+                           \ in a field u2 characters wide.  ok.
+  2dup u< if over - spaces else drop then  ok.
+  type  ok.
+;  ok.
+  ok.
+: d.r  ok.
+    >r (d.)  ok.
+    r> rtype  ok.
+;  ok.
+  ok.
+: .r  ok.
+    >r s>d r> d.r  ok.
+;  ok.
+  ok.
+: u.r  ok.
+    0 swap d.r  ok.
+;  ok.
+  ok.
+( Memory operations                          JCB 18:02 05/31/15)  ok.
+  ok.
+: move \ ( addr1 addr2 u -- )  ok.
+    >r 2dup u< if  ok.
+        r> cmove>  ok.
+    else  ok.
+        r> cmove  ok.
+    then  ok.
+;  ok.
+  ok.
+: /mod      >r s>d r> sm/rem ; 2 foldable  ok.
+: /         /mod nip ; 2 foldable  ok.
+: mod       /mod drop ; 2 foldable  ok.
+  ok.
+: ."  ok.
+    [char] " parse  ok.
+    state @ if  ok.
+        postpone sliteral  ok.
+        postpone type  ok.
+    else  ok.
+        type  ok.
+    then  ok.
+; immediate 0 foldable  ok.
+  ok.
+\ #######   CORE EXT   ########################################  ok.
+  ok.
+: unused  ok.
+    $4000 here -  ok.
+;  ok.
+  ok.
+: pad  ok.
+    here aligned  ok.
+;  ok.
+  ok.
+: within    over - >r - r> u< ; 3 foldable  ok.
+  ok.
+: s"  ok.
+    [char] " parse  ok.
+    state @ if  ok.
+        postpone sliteral  ok.
+    then  ok.
+; immediate  ok.
+  ok.
+( CASE                                       JCB 09:15 07/18/14)  ok.
+\ From ANS specification A.3.2.3.2  ok.
+  ok.
+: case 0 ; immediate  ( init count of ofs )  ok.
+  ok.
+: of  ( #of -- orig #of+1 / x -- )  ok.
+    1+    ( count ofs )  ok.
+    >r    ( move off the stack in case the control-flow )  ok.
+          ( stack is the data stack. )  ok.
+    postpone over  postpone = ( copy and test case value)  ok.
+    postpone if    ( add orig to control flow stack )  ok.
+    postpone drop  ( discards case value if = )  ok.
+    r>             ( we can bring count back now )  ok.
+; immediate  ok.
+  ok.
+: endof ( orig1 #of -- orig2 #of )  ok.
+    >r   ( move off the stack in case the control-flow )  ok.
+         ( stack is the data stack. )  ok.
+    postpone else  ok.
+    r>   ( we can bring count back now )  ok.
+; immediate  ok.
+  ok.
+: endcase  ( orig1..orign #of -- )  ok.
+    postpone drop  ( discard case value )  ok.
+    0 ?do  ok.
+      postpone then  ok.
+    loop  ok.
+; immediate  ok.
+  ok.
+\ #######   IO   ##############################################  ok.
+  ok.
+\  ------------------------------------------------------------  ok.
+\    Useful Low-Level IO definitions  ok.
+\  ------------------------------------------------------------  ok.
+\  ok.
+\    Addr  Bit READ            WRITE  ok.
+\  ok.
+\    0001  0   Port A IN  ok.
+\    0002  1   Port A OUT      Port A OUT  ok.
+\    0004  2   Port A DIR      Port A DIR  ok.
+\    0008  3   misc.out        misc.out  ok.
+\  ok.
+\    0010  4   Port B IN  ok.
+\    0020  5   Port B OUT      Port B OUT  ok.
+\    0040  6   Port B DIR      Port B DIR  ok.
+\    0080  7   SRAM read       SRAM write  ok.
+\  ok.
+\    0100  8   Port C IN  ok.
+\    0200  9   Port C OUT      Port C OUT  ok.
+\    0400  10  Port C DIR      Port C DIR  ok.
+\    0800  11  SRAM addr low   SRAM addr low  ok.
+\  ok.
+\    1000  12  UART RX         UART TX  ok.
+\    2000  13  misc.in  ok.
+\    4000  14  ticks           set ticks  ok.
+\    8000  15  SRAM addr high  SRAM addr high  ok.
+\  ok.
+\  ok.
+\ Contents of misc.out and misc.in:  ok.
+\  ok.
+\  Bitmask Bit  misc.out        misc.in  ok.
+\  ok.
+\    0001    0  Red LED 1       UART Ready to Transmit  ok.
+\    0002    1  Yellow LED 2    UART Character received  ok.
+\    0004    2  Green LED 3     Random  ok.
+\    0008    3  Blue LED 4  ok.
+\    0010    4  ok.
+\    0020    5  ok.
+\    0040    6  ok.
+\    0080    7  ok.
+\    0100    8  ok.
+\    0200    9  ok.
+\    0400   10  ok.
+\    0800   11  ok.
+\    1000   12  ok.
+\    2000   13  ok.
+\    4000   14  ok.
+\    8000   15  ok.
+\  ok.
+  ok.
+: ms   ( u -- ) 0 do 2273 0 do loop loop ; \ 11 cycles per loop run. 1 ms * 25 M
+Hz / 11 = 2273  ok.
+: leds ( x -- ) 8 io! ;  ok.
+  ok.
+: now   ( -- ) 0 $4000 io! ;  ok.
+: ticks ( -- u ) $4000 io@ ;  ok.
+: delay ( u -- ) begin dup ticks u< until drop ;  ok.
+  ok.
+: randombit ( -- 0 | 1 ) $2000 io@ 4 and 2/ 2/ ;  ok.
+: random ( -- x ) 0  16 0 do 2* randombit or 100 0 do loop loop ;  ok.
+  ok.
+$608C $3FFE ! \ Location $3FFE is an interrupt vector ! Place ALU exit opcode he
+re.  ok.
+  ok.
+  ok.
+  ok.
+: cornerstone  ok.
+  create  ok.
+    forth 2@        \ preserve FORTH and DP after this  ok.
+    , 2 cells + ,  ok.
+  does>  ok.
+    2@ forth 2! \ restore FORTH and DP  ok.
+;  ok.
+  ok.
+cornerstone new  ok.
+  ok.
+\ #######   DUMP   ############################################  ok.
+  ok.
+: dump  ok.
+    ?dup  ok.
+    if  ok.
+        1- 4 rshift 1+  ok.
+        0 do  ok.
+            cr dup dup .x space space  ok.
+            16 0 do  ok.
+                dup c@ .x2 1+  ok.
+            loop  ok.
+            space swap  ok.
+            16 0 do  ok.
+                dup c@ dup bl 127 within invert if  ok.
+                    drop [char] .  ok.
+                then  ok.
+                emit 1+  ok.
+            loop  ok.
+            drop  ok.
+        loop  ok.
+    then  ok.
+    drop  ok.
+;  ok.
+  ok.
+\ #######   INSIGHT   #########################################  ok.
+  ok.
+  ok.
+( Deep insight into stack, dictionary and code )  ok.
+( Matthias Koch )  ok.
+  ok.
+: .s ( -- )  ok.
+  \ Save initial depth  ok.
+  depth dup >r  ok.
+  ok.
+  \ Flush stack contents to temporary storage  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    1-  ok.
+    swap  ok.
+    over cells pad + !  ok.
+  repeat  ok.
+  drop  ok.
+  ok.
+  \ Print original depth  ok.
+  ." [ "  ok.
+  r@ .x2  ok.
+  ." ] "  ok.
+  ok.
+  \ Print all elements in reverse order  ok.
+  r@  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    r@ over - cells pad + @ .x  ok.
+    1-  ok.
+  repeat  ok.
+  drop  ok.
+  ok.
+  \ Restore original stack  ok.
+  0  ok.
+  begin  ok.
+    dup r@ u<  ok.
+  while  ok.
+    dup cells pad + @ swap  ok.
+    1+  ok.
+  repeat  ok.
+  rdrop  ok.
+  drop  ok.
+;  ok.
+  ok.
+: insight ( -- )  ( Long listing of everything inside of the dictionary structur
+e )  ok.
+    base @ hex cr  ok.
+    forth @  ok.
+    begin  ok.
+        dup  ok.
+    while  ok.
+         ." Addr: "     dup .x  ok.
+        ."  Link: "     dup @ 2/ 2/ $3FFE and .x  ok.
+        ."  Flags: "    dup 2 + c@ 128 and if ." I " else ." - " then  ok.
+                        dup @ 7 and ?dup if 1- u. else ." - " then  ok.
+        ."  Code: "     dup 2 + count 127 and + aligned .x  ok.
+        space           dup 2 + count 127 and type  ok.
+        @ 2/ 2/ $3FFE and cr  ok.
+    repeat  ok.
+    drop  ok.
+    base !  ok.
+;  ok.
+  ok.
+0 variable disasm-$    ( Current position for disassembling )  ok.
+0 variable disasm-cont ( Continue up to this position )  ok.
+  ok.
+: name. ( Address -- )  ( If the address is Code-Start of a dictionary word, it 
+gets named. )  ok.
+  ok.
+  dup ['] s, 24 + = \ Is this a string literal ?  ok.
+  if  ok.
+    ."   --> s" [char] " emit space  ok.
+    disasm-$ @ count type  ok.
+    [char] " emit  ok.
+  ok.
+    disasm-$ @ c@ 1+ aligned disasm-$ +!  ok.
+    drop exit  ok.
+  then  ok.
+  ok.
+  >r  ok.
+  forth @  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    dup 2 + count 127 and + aligned ( Dictionary Codestart )  ok.
+      r@ = if ."   --> " dup 2 + count 127 and type then  ok.
+    @ 2/ 2/ $3FFE and  ok.
+  repeat  ok.
+  drop r>  ok.
+  ok.
+  $000C =                            \ A call to execute  ok.
+  disasm-$ @ 4 - @ $C000 and $C000 =  \ after a literal which has bit $4000 set 
+means:  ok.
+  and                                  \ Memory fetch.  ok.
+  if  ok.
+    ."   --> " disasm-$ @ 4 - @ $3FFF and .x ." @"  ok.
+  then  ok.
+;  ok.
+  ok.
+: alu. ( Opcode -- ) ( If this opcode is from an one-opcode definition, it gets 
+named. This way inlined ALUs get a proper descri  ok.
+  ok.
+  dup $6127 = if ." >r"    drop exit then  ok.
+  dup $6B11 = if ." r@"    drop exit then  ok.
+  dup $6B1D = if ." r>"    drop exit then  ok.
+  dup $600C = if ." rdrop" drop exit then  ok.
+  ok.
+  $FF73 and  ok.
+  >r  ok.
+  forth @  ok.
+  begin  ok.
+    dup  ok.
+  while  ok.
+    dup 2 + count 127 and + aligned @ ( Dictionary First-Opcode )  ok.
+        dup $E080 and $6080 =  ok.
+        if  ok.
+          $FF73 and r@ = if rdrop 2 + count 127 and type space exit then  ok.
+        else  ok.
+          drop  ok.
+        then  ok.
+  ok.
+    @ 2/ 2/ $3FFE and  ok.
+  repeat  ok.
+  drop r> drop  ok.
+;  ok.
+  ok.
+  ok.
+: memstamp ( Addr -- ) dup .x ." : " @ .x ."   " ; ( Shows a memory location nic
+ely )  ok.
+  ok.
+: disasm-step ( -- )  ok.
+  disasm-$ @ memstamp  ok.
+  disasm-$ @ @  ( Fetch next opcode )  ok.
+  2 disasm-$ +! ( Increment position )  ok.
+  ok.
+  dup $8000 and         if ." Imm  " $7FFF and    dup .x 6 spaces               
+       .x       exit then ( Immediate )  ok.
+  dup $E000 and $0000 = if ." Jmp  " $1FFF and 2* dup                           
+       .x name. exit then ( Branch )  ok.
+  dup $E000 and $2000 = if ." JZ   " $1FFF and 2* disasm-cont @ over max disasm-
+cont ! .x       exit then ( 0-Branch )  ok.
+  dup $E000 and $4000 = if ." Call " $1FFF and 2* dup                           
+       .x name. exit then ( Call )  ok.
+                           ." Alu"   13 spaces dup alu. $80 and if ." exit" then
+                          ( ALU )  ok.
+;  ok.
+  ok.
+: seec ( -- ) ( Continues to see )  ok.
+  base @ hex cr  ok.
+  0 disasm-cont !  ok.
+  begin  ok.
+    disasm-$ @ @  ok.
+    dup  $E080 and $6080 =           ( Loop terminates with ret )  ok.
+    swap $E000 and 0= or             ( or when an unconditional jump is reached.
+ )  ok.
+    disasm-$ @ disasm-cont @ u>= and ( Do not stop when there has been a conditi
+onal jump further )  ok.
+  ok.
+    disasm-step cr  ok.
+  until  ok.
+  ok.
+  base !  ok.
+;  ok.
+  ok.
+: see ( -- ) ( Takes name of definition and shows its contents from beginning to
+ first ret )  ok.
+  ' disasm-$ !  ok.
+  seec  ok.
+;  ok.
+  ok.
+

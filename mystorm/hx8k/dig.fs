@@ -10,6 +10,7 @@
   7 of 803 endof
   8 of f07 endof
   9 of d07 endof
+  0 swap
  endcase
  7s
 ;
